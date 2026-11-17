@@ -194,7 +194,8 @@ export class PolishTask implements RepairStep {
   readonly title: string;
   readonly hint: string;
   readonly spots: RustSpot[];
-  readonly strokeFactor: number;
+  /** 道具（磨き粉）で上書きするので readonly にしない */
+  strokeFactor: number;
   readonly reversalBonus: number;
 
   private lastDir: { x: number; y: number } | null = null;
