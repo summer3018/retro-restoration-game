@@ -15,6 +15,8 @@ export interface ScreenParams {
   retry?: boolean;
   /** 「次の品物へ」から来たか（next_stage_start の記録用） */
   fromNext?: boolean;
+  /** クリアで受け取ったお礼（円） */
+  reward?: number;
 }
 
 export type Unmount = () => void;

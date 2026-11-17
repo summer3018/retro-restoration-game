@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { STAGES } from '../src/game/stages';
-import { FitTask, RotateTask } from '../src/game/tasks';
+import { RepairSession } from '../src/game/session';
+import { FitTask, RotateTask, type RepairStep } from '../src/game/tasks';
+import { applyToolEffects, toolEffects } from '../src/game/tools';
 import { playStep, playThrough } from './playStep';
 
 /**
@@ -54,6 +56,20 @@ describe('全ステージの通しプレイ', () => {
             expect(p.hitRadius).toBeGreaterThanOrEqual(30);
           }
         }
+      });
+
+      it('道具を全部いちばん良くしても、最後までクリアできる（進み具合は1を超えない）', () => {
+        const steps = stage.build();
+        applyToolEffects(steps, toolEffects({ cloth: 3, polish: 3, tweezers: 3 }));
+        const session = new RepairSession(steps, 0);
+        let guard = 0;
+        while (!session.isComplete && guard++ < 20) {
+          playStep(session.current as RepairStep);
+          for (const s of steps) expect(s.progress).toBeLessThanOrEqual(1);
+          session.update(guard);
+        }
+        expect(session.isComplete).toBe(true);
+        expect(session.overallProgress).toBe(1);
       });
 
       it('回す工程は、指を置ける範囲が十分に大きい', () => {
