@@ -45,7 +45,7 @@ export function mountStageSelect(app: App): Unmount {
   screen.append(
     bar,
     list,
-    el('p', { class: 'muted' }, ['どれからでも遊べます。失敗してもやり直しはありません。']),
+    el('p', { class: 'muted' }, ['どれからでも遊べます。時間制限はなく、置き間違えても何度でもやり直せます。']),
   );
   app.root.append(screen);
   return () => undefined;
