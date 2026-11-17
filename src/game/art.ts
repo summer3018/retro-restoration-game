@@ -1,5 +1,5 @@
 import type { FitPart, PolishTask, RepairStep, ScrubMask } from './tasks';
-import { FinalTask, FitTask, PolishTask as PolishCls, ScrubMask as ScrubCls } from './tasks';
+import { FinalTask, FitTask, PolishTask as PolishCls, RotateTask, ScrubMask as ScrubCls } from './tasks';
 
 /** 描画用の共通ヘルパーと、全ステージ共通の「汚れ」「サビ」の見た目。 */
 
@@ -34,6 +34,11 @@ export function findFit(steps: RepairStep[], id: string): FitTask | null {
   return s instanceof FitTask ? s : null;
 }
 
+export function findRotate(steps: RepairStep[], id: string): RotateTask | null {
+  const s = steps.find((x) => x.id === id);
+  return s instanceof RotateTask ? s : null;
+}
+
 export function findFinal(steps: RepairStep[], id: string): FinalTask | null {
   const s = steps.find((x) => x.id === id);
   return s instanceof FinalTask ? s : null;
@@ -45,6 +50,7 @@ export function completeStep(step: RepairStep): void {
   else if (step instanceof PolishCls) step.finishAll();
   else if (step instanceof FitTask) step.finishAll();
   else if (step instanceof FinalTask) step.triggered = true;
+  else if (step instanceof RotateTask) step.finishAll();
 }
 
 /* ---------------------------- 図形ヘルパー ---------------------------- */

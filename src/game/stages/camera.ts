@@ -408,6 +408,7 @@ export const cameraStage: StageModule = {
     subtitle: '棚の奥にあったフィルムカメラ',
     caption: 'くもったレンズを磨き、部品をそろえる。シャッターを押せば、また一枚が残せる。',
     accent: '#c98f6a',
+    finalCue: 'shutter',
   },
 
   build: buildCameraSteps,

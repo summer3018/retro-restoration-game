@@ -1,9 +1,21 @@
 import type { StageId, StageModule } from '../stage';
 import { cameraStage } from './camera';
 import { clockStage } from './clock';
+import { lampStage } from './lamp';
+import { phoneStage } from './phone';
 import { radioStage } from './radio';
+import { recordStage } from './record';
+import { robotStage } from './robot';
 
-export const STAGES: StageModule[] = [radioStage, clockStage, cameraStage];
+export const STAGES: StageModule[] = [
+  radioStage,
+  clockStage,
+  cameraStage,
+  lampStage,
+  robotStage,
+  recordStage,
+  phoneStage,
+];
 
 export const STAGE_IDS: StageId[] = STAGES.map((s) => s.def.id);
 

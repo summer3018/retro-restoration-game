@@ -2,7 +2,7 @@ import { completeStep, type VisualState } from '../game/art';
 import type { StageModule } from '../game/stage';
 
 /** 品物が収まっている範囲（論理座標）。サムネイルはここを切り出す */
-const FOCUS = { x: 16, y: 102, w: 328, h: 268 };
+const DEFAULT_FOCUS = { x: 16, y: 102, w: 328, h: 268 };
 
 export type ThumbMode = 'before' | 'after';
 
@@ -20,6 +20,7 @@ export function renderThumb(canvas: HTMLCanvasElement, stage: StageModule, mode:
   const steps = stage.build();
   if (mode === 'after') for (const s of steps) completeStep(s);
 
+  const FOCUS = stage.def.thumbFocus ?? DEFAULT_FOCUS;
   const scale = Math.min(cssSize / FOCUS.w, cssSize / FOCUS.h);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 

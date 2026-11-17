@@ -1,7 +1,19 @@
 import type { VisualState } from './art';
 import type { RepairStep } from './tasks';
 
-export type StageId = 'radio' | 'clock' | 'camera';
+export type StageId = 'radio' | 'clock' | 'camera' | 'lamp' | 'robot' | 'record' | 'phone';
+
+/**
+ * 最後に「動いた！」となる瞬間の効果音と演出。
+ * - power: ブーンと通電（ラジオ）
+ * - clock: カチッ＋通電（時計）
+ * - shutter: シャッター音＋画面が白く光る（カメラ）
+ * - flame: 火が灯る音（ランプ）
+ * - walk: ぜんまいが回ってカシャカシャ歩く音（ロボット）
+ * - music: 短いメロディ（レコード）
+ * - bell: ベルが鳴る（黒電話）
+ */
+export type FinalCue = 'power' | 'clock' | 'shutter' | 'flame' | 'walk' | 'music' | 'bell';
 
 export interface StageDef {
   id: StageId;
@@ -14,6 +26,10 @@ export interface StageDef {
   caption: string;
   /** 画面のアクセント色 */
   accent: string;
+  /** 最後の工程が終わった瞬間の効果音と演出 */
+  finalCue: FinalCue;
+  /** 図鑑のサムネイルで切り出す範囲（縦長の品物だけ指定。省略時は共通の範囲） */
+  thumbFocus?: { x: number; y: number; w: number; h: number };
 }
 
 export interface StageModule {

@@ -4,7 +4,7 @@
  * 座標はすべて「論理座標」(DESIGN_W x DESIGN_H) で扱う。
  */
 
-export type StepKind = 'wipe' | 'polish' | 'fit' | 'final';
+export type StepKind = 'wipe' | 'polish' | 'fit' | 'final' | 'rotate';
 
 export interface RepairStep {
   readonly id: string;
@@ -448,5 +448,113 @@ export class FinalTask implements RepairStep {
 
   get isDone(): boolean {
     return this.triggered;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 5) 回す: 中心のまわりを指でぐるっと回す（黒電話のダイヤルなど）     */
+/* ------------------------------------------------------------------ */
+
+export interface RotateTaskOptions {
+  id: string;
+  title: string;
+  hint: string;
+  /** 回転の中心 */
+  x: number;
+  y: number;
+  /** 指を置いて回せる範囲の半径（見た目より大きめにする） */
+  hitRadius: number;
+  /** 何周ぶん回したら完了か（向きは問わない） */
+  turns?: number;
+  label: string;
+}
+
+/**
+ * 回した角度の合計で進む工程。右回り・左回りのどちらでも進む（間違いをつくらない）。
+ * 指を離すと、表示上の角度だけが元に戻る（ダイヤルが戻る動き）。進み具合は戻らない。
+ */
+export class RotateTask implements RepairStep {
+  readonly id: string;
+  readonly kind = 'rotate' as const;
+  readonly title: string;
+  readonly hint: string;
+  readonly x: number;
+  readonly y: number;
+  readonly hitRadius: number;
+  readonly label: string;
+  readonly target: number;
+  /** 回した角度の合計(rad) */
+  swept = 0;
+  /** 表示用の角度(rad)。指を離すと 0 に戻っていく */
+  angle = 0;
+  private lastA: number | null = null;
+
+  constructor(opts: RotateTaskOptions) {
+    this.id = opts.id;
+    this.title = opts.title;
+    this.hint = opts.hint;
+    this.x = opts.x;
+    this.y = opts.y;
+    this.hitRadius = opts.hitRadius;
+    this.label = opts.label;
+    this.target = Math.PI * 2 * (opts.turns ?? 1.5);
+  }
+
+  hitTest(x: number, y: number): boolean {
+    return Math.hypot(x - this.x, y - this.y) <= this.hitRadius;
+  }
+
+  get turning(): boolean {
+    return this.lastA !== null;
+  }
+
+  /** 指を置いたとき。範囲内なら true */
+  begin(x: number, y: number): boolean {
+    if (!this.hitTest(x, y)) return false;
+    this.lastA = Math.atan2(y - this.y, x - this.x);
+    return true;
+  }
+
+  /**
+   * 指を動かしたとき。
+   * @returns この動きで回った角度(rad, 0以上)
+   */
+  move(x: number, y: number): number {
+    if (this.lastA === null) return 0;
+    // 中心に近すぎると角度がぶれるので数えない
+    if (Math.hypot(x - this.x, y - this.y) < 10) return 0;
+    const a = Math.atan2(y - this.y, x - this.x);
+    let d = a - this.lastA;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    this.lastA = a;
+    const gained = Math.abs(d);
+    this.swept = Math.min(this.target, this.swept + gained);
+    this.angle += d;
+    return gained;
+  }
+
+  end(): void {
+    this.lastA = null;
+  }
+
+  /** 毎フレーム呼ぶ。指を離している間、表示の角度を 0 に戻す */
+  relax(dtMs: number): void {
+    if (this.lastA !== null) return;
+    this.angle *= Math.exp(-dtMs / 140);
+    if (Math.abs(this.angle) < 0.002) this.angle = 0;
+  }
+
+  get progress(): number {
+    return Math.min(1, this.swept / this.target);
+  }
+
+  get isDone(): boolean {
+    return this.progress >= 1;
+  }
+
+  finishAll(): void {
+    this.swept = this.target;
+    this.lastA = null;
   }
 }

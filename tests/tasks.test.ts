@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FinalTask, FitTask, PolishTask, ScrubMask } from '../src/game/tasks';
+import { FinalTask, FitTask, PolishTask, RotateTask, ScrubMask } from '../src/game/tasks';
 
 describe('ScrubMask（汚れ落とし）', () => {
   const make = () =>
@@ -215,5 +215,64 @@ describe('FinalTask（最終動作）', () => {
     const t = make();
     t.tap(50, 50);
     expect(t.tap(50, 50)).toBe(false);
+  });
+});
+
+describe('RotateTask（回す）', () => {
+  const make = () =>
+    new RotateTask({ id: 'r', title: '回す', hint: '回そう', x: 100, y: 100, hitRadius: 60, turns: 1, label: 'ダイヤル' });
+
+  /** 中心のまわりを角度 from→to まで、細かく刻んで指を動かす */
+  const turn = (t: RotateTask, from: number, to: number, r = 40) => {
+    t.begin(100 + Math.cos(from) * r, 100 + Math.sin(from) * r);
+    const n = 60;
+    for (let i = 1; i <= n; i++) {
+      const a = from + ((to - from) * i) / n;
+      t.move(100 + Math.cos(a) * r, 100 + Math.sin(a) * r);
+    }
+    t.end();
+  };
+
+  it('範囲の外に指を置いても始まらない', () => {
+    const t = make();
+    expect(t.begin(300, 300)).toBe(false);
+    expect(t.move(100, 140)).toBe(0);
+    expect(t.progress).toBe(0);
+  });
+
+  it('半周まわすと半分進む', () => {
+    const t = make();
+    turn(t, 0, Math.PI);
+    expect(t.progress).toBeGreaterThan(0.45);
+    expect(t.progress).toBeLessThan(0.55);
+    expect(t.isDone).toBe(false);
+  });
+
+  it('逆回りでも進む（間違いをつくらない）', () => {
+    const t = make();
+    turn(t, 0, -Math.PI * 2.2);
+    expect(t.isDone).toBe(true);
+  });
+
+  it('指を離すと、表示の角度だけ元に戻り、進み具合は残る', () => {
+    const t = make();
+    turn(t, 0, Math.PI);
+    const kept = t.progress;
+    expect(Math.abs(t.angle)).toBeGreaterThan(3);
+    for (let i = 0; i < 100; i++) t.relax(16);
+    expect(t.angle).toBe(0);
+    expect(t.progress).toBe(kept);
+  });
+
+  it('中心に近すぎる動きは数えない（角度のぶれ防止）', () => {
+    const t = make();
+    t.begin(140, 100);
+    expect(t.move(101, 101)).toBe(0);
+  });
+
+  it('進み具合は1を超えない', () => {
+    const t = make();
+    turn(t, 0, Math.PI * 8);
+    expect(t.progress).toBe(1);
   });
 });

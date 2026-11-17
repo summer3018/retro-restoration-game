@@ -7,7 +7,7 @@ import { RepairSession } from '../game/session';
 import { TRAY_AREA, type StageModule } from '../game/stage';
 import { getStage } from '../game/stages';
 import { openNoteSheet } from './note';
-import { FinalTask, FitTask, PolishTask, ScrubMask, type FitPart } from '../game/tasks';
+import { FinalTask, FitTask, PolishTask, RotateTask, ScrubMask, type FitPart } from '../game/tasks';
 
 const FINALE_MS = 1700;
 const AUTO_NEXT_MS = 2300;
@@ -70,6 +70,8 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
   let lastProgress = 0;
   let idleMs = 0;
   let flash = 0;
+  /** 回す工程で、カチカチ音を鳴らすための角度の積み上げ */
+  let dialAcc = 0;
 
   // 記録
   if (params.retry) app.analytics.track('stage_retry', { stageId: stage.def.id });
@@ -158,6 +160,14 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
       }
       return;
     }
+    if (step instanceof RotateTask) {
+      if (step.begin(p.x, p.y)) {
+        sfx.tick();
+      } else {
+        showToast(`${step.label}に指をのせて、ぐるっと回そう`);
+      }
+      return;
+    }
     if (step instanceof ScrubMask) {
       const removed = step.brush(p.x, p.y, brushRadius(), 0.5);
       if (removed > 0) {
@@ -188,6 +198,14 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
       if (r.hit) {
         sfx.polish();
         if (r.gained > 0 && Math.random() < 0.3) particles.burst(p.x, p.y, 1, 'spark', 0.5);
+      }
+    } else if (step instanceof RotateTask && step.turning) {
+      const g = step.move(p.x, p.y);
+      dialAcc += g;
+      if (dialAcc > 0.3) {
+        dialAcc = 0;
+        sfx.tick();
+        if (Math.random() < 0.35) particles.burst(p.x, p.y, 1, 'spark', 0.4);
       }
     } else if (step instanceof FinalTask && pressedFinal) {
       if (!step.hitTest(p.x, p.y)) {
@@ -220,6 +238,9 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
       pressedFinal = null;
     } else if (step instanceof PolishTask) {
       step.endStroke();
+    } else if (step instanceof RotateTask) {
+      if (step.turning && Math.abs(step.angle) > 0.4) sfx.dial();
+      step.end();
     }
     try {
       if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
@@ -236,15 +257,31 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
     return 26;
   }
 
+  /** 最後の工程が終わった瞬間の音と演出（品物ごとに違う） */
   function onFinalTriggered(): void {
-    if (stage.def.id === 'camera') {
-      sfx.shutter();
-      flash = 1;
-    } else if (stage.def.id === 'clock') {
-      sfx.tick();
-      sfx.power();
-    } else {
-      sfx.power();
+    switch (stage.def.finalCue) {
+      case 'shutter':
+        sfx.shutter();
+        flash = 1;
+        break;
+      case 'clock':
+        sfx.tick();
+        sfx.power();
+        break;
+      case 'flame':
+        sfx.flame();
+        break;
+      case 'walk':
+        sfx.walk();
+        break;
+      case 'music':
+        sfx.music();
+        break;
+      case 'bell':
+        sfx.bell();
+        break;
+      default:
+        sfx.power();
     }
   }
 
@@ -389,10 +426,12 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
       if (dustFade === 0) wipe.clearAll();
     }
 
-    // 部品の失敗演出
+    // 部品の失敗演出 / 回したダイヤルが戻る動き
     for (const s of steps) {
       if (s instanceof FitTask) {
         for (const p of s.parts) if (p.shake > 0) p.shake = Math.max(0, p.shake - dt);
+      } else if (s instanceof RotateTask) {
+        s.relax(dt);
       }
     }
 
@@ -407,6 +446,8 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
     // 完成
     if (session.isComplete && !finished) {
       finished = true;
+      // 最後の工程がタップ以外（回すなど）のときは、ここで「動いた！」の音を鳴らす
+      if (!(steps[steps.length - 1] instanceof FinalTask)) onFinalTriggered();
       sfx.complete();
       particles.burst(180, 240, 34, 'spark', 1.4);
       updateHud();

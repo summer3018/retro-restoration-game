@@ -373,6 +373,7 @@ export const radioStage: StageModule = {
     subtitle: '物置で眠っていた真空管ラジオ',
     caption: '木のボディに布地のスピーカー。電源を入れると、ランプがあたたかく灯る。',
     accent: '#e3a357',
+    finalCue: 'power',
   },
 
   build: buildRadioSteps,

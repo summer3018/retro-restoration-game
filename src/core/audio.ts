@@ -204,6 +204,59 @@ export class Sfx {
     this.noiseBurst({ type: 'bandpass', freq: 1400, q: 1.2, peak: 0.05, attack: 0.02, decay: 0.4 });
   }
 
+  /** 黒電話のダイヤルが戻るときの「ジーッ」 */
+  dial(): void {
+    if (!this.ready() || !this.throttle('dial', 55)) return;
+    this.noiseBurst({ type: 'bandpass', freq: 2400, q: 5, peak: 0.06, attack: 0.002, decay: 0.035 });
+    this.tone({ type: 'square', from: 1900, peak: 0.018, attack: 0.002, decay: 0.02 });
+  }
+
+  /** 黒電話のベル（ジリリリン） */
+  bell(): void {
+    if (!this.ready()) return;
+    for (let i = 0; i < 22; i++) {
+      const f = i % 2 === 0 ? 1320 : 1580;
+      this.tone({ type: 'triangle', from: f, peak: 0.1, attack: 0.003, decay: 0.05, delay: i * 0.045 });
+      this.tone({ type: 'sine', from: f * 2.01, peak: 0.03, attack: 0.002, decay: 0.04, delay: i * 0.045 });
+    }
+  }
+
+  /** レコードの短いメロディ（プツッという針の音のあと、ゆったりした3拍子） */
+  music(): void {
+    if (!this.ready()) return;
+    this.noiseBurst({ type: 'highpass', freq: 1800, q: 0.7, peak: 0.07, attack: 0.002, decay: 0.03 });
+    // ド ミ ソ | ラ ソ ミ | ファ ミ レ | ド
+    const melody = [523.25, 659.25, 783.99, 880, 783.99, 659.25, 698.46, 659.25, 587.33, 523.25];
+    const beat = 0.24;
+    melody.forEach((f, i) => {
+      const d = 0.18 + i * beat;
+      this.tone({ type: 'triangle', from: f, peak: 0.12, attack: 0.02, decay: 0.32, delay: d });
+      if (i % 3 === 0) {
+        this.tone({ type: 'sine', from: f / 2, peak: 0.08, attack: 0.02, decay: 0.5, delay: d });
+      }
+    });
+  }
+
+  /** ブリキのロボット：ぜんまいの「ジジジ」のあと、カシャン・カシャンと歩く */
+  walk(): void {
+    if (!this.ready()) return;
+    this.noiseBurst({ type: 'bandpass', freq: 3000, q: 4, peak: 0.06, attack: 0.01, decay: 0.3 });
+    for (let i = 0; i < 6; i++) {
+      const d = 0.32 + i * 0.24;
+      const f = i % 2 === 0 ? 880 : 740;
+      this.tone({ type: 'square', from: f, to: f * 0.7, peak: 0.05, attack: 0.002, decay: 0.05, delay: d });
+      this.tone({ type: 'sine', from: 240, to: 150, peak: 0.1, attack: 0.003, decay: 0.08, delay: d });
+    }
+  }
+
+  /** ランプに火が灯る「ボッ」 */
+  flame(): void {
+    if (!this.ready()) return;
+    this.noiseBurst({ type: 'lowpass', freq: 260, q: 0.8, peak: 0.22, attack: 0.03, decay: 0.5, sweepTo: 1400 });
+    this.tone({ type: 'sine', from: 140, to: 90, peak: 0.12, attack: 0.02, decay: 0.4 });
+    this.tone({ type: 'sine', from: 660, peak: 0.05, attack: 0.15, decay: 0.6, delay: 0.1 });
+  }
+
   /** カメラのシャッター */
   shutter(): void {
     if (!this.ready()) return;

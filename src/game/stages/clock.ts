@@ -266,6 +266,7 @@ export const clockStage: StageModule = {
     subtitle: '止まったままの真鍮の置き時計',
     caption: '曇ったガラスの奥で歯車が噛み合い、長く止まっていた時間がまた動き出す。',
     accent: '#d9b25c',
+    finalCue: 'clock',
   },
 
   build: buildClockSteps,
