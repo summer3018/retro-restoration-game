@@ -34,7 +34,15 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      // GitHub Pages では同じオリジン(summer3018.github.io)に別のゲームも載るので、
+      // このゲームの古いキャッシュだけを消す(他のゲームのキャッシュには触らない)
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith("retro-restoration-") && k !== CACHE)
+            .map((k) => caches.delete(k)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
