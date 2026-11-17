@@ -2,6 +2,15 @@
  * 進行状況・設定の保存（localStorage）。
  * テストできるように、保存先は差し替え可能にしてある。
  */
+import {
+  defaultToolLevels,
+  MAX_TOOL_LEVEL,
+  rewardFor,
+  TOOL_IDS,
+  upgradeCost,
+  type ToolId,
+  type ToolLevels,
+} from '../game/tools';
 
 export interface KeyValueStore {
   getItem(key: string): string | null;
@@ -51,10 +60,37 @@ export interface SaveData {
   settings: {
     muted: boolean;
   };
+  /** お礼でもらったお金（円） */
+  money: number;
+  /** 道具のレベル（1〜3） */
+  tools: ToolLevels;
 }
 
 export function emptySave(): SaveData {
-  return { version: 1, collection: {}, settings: { muted: false } };
+  return { version: 1, collection: {}, settings: { muted: false }, money: 0, tools: defaultToolLevels() };
+}
+
+export type BuyResult =
+  | { ok: true; toolId: ToolId; level: number; cost: number }
+  | { ok: false; reason: 'max' | 'short' };
+
+/** 所持金を 0 以上の整数に直す（道具が入る前のデータ・壊れたデータ用） */
+function sanitizeMoney(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+}
+
+/** 道具レベルを 1〜3 の整数に直す */
+function sanitizeTools(v: unknown): ToolLevels {
+  const out = defaultToolLevels();
+  if (!v || typeof v !== 'object') return out;
+  const src = v as Record<string, unknown>;
+  for (const id of TOOL_IDS) {
+    const n = src[id];
+    if (typeof n === 'number' && Number.isFinite(n)) {
+      out[id] = Math.min(MAX_TOOL_LEVEL, Math.max(1, Math.floor(n)));
+    }
+  }
+  return out;
 }
 
 function emptyRecord(): StageRecord {
@@ -80,6 +116,9 @@ export class SaveStore {
         version: 1,
         collection: parsed.collection as Record<string, StageRecord>,
         settings: { muted: Boolean(parsed.settings?.muted) },
+        // 道具が入る前のデータには無いので、初期値で補う（図鑑の記録はそのまま）
+        money: sanitizeMoney(parsed.money),
+        tools: sanitizeTools(parsed.tools),
       };
     } catch {
       // 壊れたデータでも遊べなくならないようにする
@@ -123,6 +162,37 @@ export class SaveStore {
     };
     this.flush();
     return firstTime;
+  }
+
+  /**
+   * クリアを記録して、お礼を受け取る。プレイ画面からはこれだけを呼ぶ（お礼の二重取りを防ぐ）。
+   */
+  completeStage(stageId: string, elapsedMs: number, nowIso: string): { firstClear: boolean; reward: number } {
+    const firstClear = this.recordClear(stageId, elapsedMs, nowIso);
+    const reward = rewardFor(firstClear);
+    this.data.money += reward;
+    this.flush();
+    return { firstClear, reward };
+  }
+
+  get money(): number {
+    return this.data.money;
+  }
+
+  get toolLevels(): ToolLevels {
+    return { ...this.data.tools };
+  }
+
+  /** 道具を1段階上げる。足りない・最高のときは何も変えない */
+  buyUpgrade(toolId: ToolId): BuyResult {
+    const level = this.data.tools[toolId];
+    const cost = upgradeCost(level);
+    if (cost === null) return { ok: false, reason: 'max' };
+    if (this.data.money < cost) return { ok: false, reason: 'short' };
+    this.data.money -= cost;
+    this.data.tools[toolId] = level + 1;
+    this.flush();
+    return { ok: true, toolId, level: level + 1, cost };
   }
 
   get muted(): boolean {
