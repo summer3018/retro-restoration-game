@@ -69,6 +69,22 @@ describe('Analytics（プレイ記録）', () => {
     expect(new Date(e.ts).toString()).not.toBe('Invalid Date');
   });
 
+  it('道具を買ったことを、道具・レベル・値段つきで記録し、書き出しにも入る', () => {
+    const { a } = makeAnalytics();
+    const e = a.track('tool_buy', { toolId: 'cloth', level: 2, cost: 250 });
+    expect(e).toMatchObject({ event: 'tool_buy', toolId: 'cloth', level: 2, cost: 250, stageId: null });
+    const out = a.exportPayload().events.find((x) => x.event === 'tool_buy');
+    expect(out).toMatchObject({ toolId: 'cloth', level: 2, cost: 250 });
+  });
+
+  it('道具の項目は、ほかのイベントには付かない', () => {
+    const { a } = makeAnalytics();
+    const e = a.track('stage_start', { stageId: 'radio' });
+    expect('toolId' in e).toBe(false);
+    expect('level' in e).toBe(false);
+    expect('cost' in e).toBe(false);
+  });
+
   it('経過時間を記録できる', () => {
     const { a } = makeAnalytics();
     const e = a.track('stage_complete', { stageId: 'radio', elapsedMs: 95_000 });
