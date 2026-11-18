@@ -69,6 +69,22 @@ describe('Analytics（プレイ記録）', () => {
     expect(new Date(e.ts).toString()).not.toBe('Invalid Date');
   });
 
+  it('道具を買ったことを、道具・レベル・値段つきで記録し、書き出しにも入る', () => {
+    const { a } = makeAnalytics();
+    const e = a.track('tool_buy', { toolId: 'cloth', level: 2, cost: 250 });
+    expect(e).toMatchObject({ event: 'tool_buy', toolId: 'cloth', level: 2, cost: 250, stageId: null });
+    const out = a.exportPayload().events.find((x) => x.event === 'tool_buy');
+    expect(out).toMatchObject({ toolId: 'cloth', level: 2, cost: 250 });
+  });
+
+  it('道具の項目は、ほかのイベントには付かない', () => {
+    const { a } = makeAnalytics();
+    const e = a.track('stage_start', { stageId: 'radio' });
+    expect('toolId' in e).toBe(false);
+    expect('level' in e).toBe(false);
+    expect('cost' in e).toBe(false);
+  });
+
   it('経過時間を記録できる', () => {
     const { a } = makeAnalytics();
     const e = a.track('stage_complete', { stageId: 'radio', elapsedMs: 95_000 });
@@ -179,5 +195,95 @@ describe('座標の変換（タッチ位置のずれ防止）', () => {
       expect(br.x).toBeLessThanOrEqual(w + 0.001);
       expect(br.y).toBeLessThanOrEqual(h + 0.001);
     }
+  });
+});
+
+describe('SaveStore（お礼と道具）', () => {
+  const withSaved = (obj: unknown) => {
+    const m = new MemoryStore();
+    m.setItem(SAVE_KEY, JSON.stringify(obj));
+    return m;
+  };
+
+  it('道具が入る前の保存データでも、図鑑の記録は消えず、所持金0・道具Lv1で始まる', () => {
+    const m = withSaved({
+      version: 1,
+      collection: { radio: { cleared: true, clearCount: 2, bestMs: 5000, firstClearedAt: '2026-11-17T10:00:00.000Z' } },
+      settings: { muted: true },
+    });
+    const s = new SaveStore(m);
+    expect(s.isCleared('radio')).toBe(true);
+    expect(s.record('radio').clearCount).toBe(2);
+    expect(s.muted).toBe(true);
+    expect(s.money).toBe(0);
+    expect(s.toolLevels).toEqual({ cloth: 1, polish: 1, tweezers: 1 });
+  });
+
+  it('壊れた所持金と道具レベルは、0以上・Lv1〜3に直して読む', () => {
+    const a = new SaveStore(withSaved({ version: 1, collection: {}, settings: {}, money: -5, tools: { cloth: 99, polish: 'x', tweezers: 0 } }));
+    expect(a.money).toBe(0);
+    expect(a.toolLevels).toEqual({ cloth: 3, polish: 1, tweezers: 1 });
+    const b = new SaveStore(withSaved({ version: 1, collection: {}, settings: {}, money: 'abc', tools: null }));
+    expect(b.money).toBe(0);
+    expect(b.toolLevels).toEqual({ cloth: 1, polish: 1, tweezers: 1 });
+    const c = new SaveStore(withSaved({ version: 1, collection: {}, settings: {}, money: 12.7, tools: { cloth: 2.4 } }));
+    expect(c.money).toBe(12);
+    expect(c.toolLevels).toEqual({ cloth: 2, polish: 1, tweezers: 1 });
+  });
+
+  it('クリアでお礼が入る（初回300円、2回目から120円）。読み直しても残る', () => {
+    const m = new MemoryStore();
+    const s = new SaveStore(m);
+    expect(s.completeStage('radio', 60_000, '2026-11-18T10:00:00.000Z')).toEqual({ firstClear: true, reward: 300 });
+    expect(s.money).toBe(300);
+    expect(s.completeStage('radio', 50_000, '2026-11-18T11:00:00.000Z')).toEqual({ firstClear: false, reward: 120 });
+    expect(s.money).toBe(420);
+    expect(s.isCleared('radio')).toBe(true);
+    expect(new SaveStore(m).money).toBe(420);
+  });
+
+  it('ちょうどの所持金で買え、読み直しても残る', () => {
+    const m = withSaved({ version: 1, collection: {}, settings: {}, money: 250 });
+    const s = new SaveStore(m);
+    expect(s.buyUpgrade('cloth')).toEqual({ ok: true, toolId: 'cloth', level: 2, cost: 250 });
+    expect(s.money).toBe(0);
+    const again = new SaveStore(m);
+    expect(again.toolLevels.cloth).toBe(2);
+    expect(again.money).toBe(0);
+  });
+
+  it('1円でも足りなければ買えず、お金も減らない', () => {
+    const s = new SaveStore(withSaved({ version: 1, collection: {}, settings: {}, money: 249 }));
+    expect(s.buyUpgrade('cloth')).toEqual({ ok: false, reason: 'short' });
+    expect(s.money).toBe(249);
+    expect(s.toolLevels.cloth).toBe(1);
+  });
+
+  it('最高レベルの道具は、お金があっても買えない', () => {
+    const s = new SaveStore(withSaved({ version: 1, collection: {}, settings: {}, money: 9999, tools: { cloth: 3, polish: 1, tweezers: 1 } }));
+    expect(s.buyUpgrade('cloth')).toEqual({ ok: false, reason: 'max' });
+    expect(s.money).toBe(9999);
+  });
+
+  it('連続で買うと、Lv2→Lv3と上がり、そのたびに値段ぶん減る', () => {
+    const s = new SaveStore(withSaved({ version: 1, collection: {}, settings: {}, money: 1000 }));
+    expect(s.buyUpgrade('polish')).toMatchObject({ ok: true, level: 2, cost: 250 });
+    expect(s.buyUpgrade('polish')).toMatchObject({ ok: true, level: 3, cost: 600 });
+    expect(s.buyUpgrade('polish')).toEqual({ ok: false, reason: 'max' });
+    expect(s.money).toBe(150);
+  });
+
+  it('全部消すと、所持金と道具も最初に戻る', () => {
+    const s = new SaveStore(withSaved({ version: 1, collection: {}, settings: {}, money: 900, tools: { cloth: 3, polish: 2, tweezers: 2 } }));
+    s.resetAll();
+    expect(s.money).toBe(0);
+    expect(s.toolLevels).toEqual({ cloth: 1, polish: 1, tweezers: 1 });
+  });
+
+  it('toolLevels はコピーなので、外から書き換えても保存は変わらない', () => {
+    const s = new SaveStore(new MemoryStore());
+    const lv = s.toolLevels;
+    lv.cloth = 3;
+    expect(s.toolLevels.cloth).toBe(1);
   });
 });

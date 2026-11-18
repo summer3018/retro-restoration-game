@@ -7,6 +7,7 @@ import { mountData } from './screens/data';
 import { mountPlay } from './screens/play';
 import { mountStageSelect } from './screens/stageSelect';
 import { mountTitle } from './screens/title';
+import { mountTools } from './screens/tools';
 
 const root = document.getElementById('app');
 if (!root) throw new Error('#app が見つかりません');
@@ -18,6 +19,7 @@ app.register('play', (a, p) => mountPlay(a, p));
 app.register('complete', (a, p) => mountComplete(a, p));
 app.register('collection', (a) => mountCollection(a));
 app.register('data', (a) => mountData(a));
+app.register('tools', (a, p) => mountTools(a, p));
 
 app.go('title');
 

@@ -12,7 +12,8 @@ export type EventName =
   | 'stage_complete'
   | 'stage_retry'
   | 'session_end'
-  | 'next_stage_start';
+  | 'next_stage_start'
+  | 'tool_buy';
 
 export interface LoggedEvent {
   event: EventName;
@@ -25,6 +26,10 @@ export interface LoggedEvent {
   clientId: string;
   /** ページを開いてから閉じるまでの一時ID */
   sessionId: string;
+  /** tool_buy のときだけ: 買った道具・上がったレベル・値段 */
+  toolId?: string;
+  level?: number;
+  cost?: number;
 }
 
 export interface SurveyAnswer {
@@ -124,7 +129,10 @@ export class Analytics {
     }
   }
 
-  track(event: EventName, detail: { stageId?: string | null; elapsedMs?: number | null } = {}): LoggedEvent {
+  track(
+    event: EventName,
+    detail: { stageId?: string | null; elapsedMs?: number | null; toolId?: string; level?: number; cost?: number } = {},
+  ): LoggedEvent {
     const entry: LoggedEvent = {
       event,
       ts: new Date(this.now()).toISOString(),
@@ -133,6 +141,10 @@ export class Analytics {
       clientId: this.clientId,
       sessionId: this.sessionId,
     };
+    // 道具の項目は、渡されたときだけ付ける（ほかのイベントの形は変えない）
+    if (detail.toolId !== undefined) entry.toolId = detail.toolId;
+    if (detail.level !== undefined) entry.level = detail.level;
+    if (detail.cost !== undefined) entry.cost = detail.cost;
     this.events.push(entry);
     if (this.events.length > MAX_EVENTS) {
       this.events.splice(0, this.events.length - MAX_EVENTS);

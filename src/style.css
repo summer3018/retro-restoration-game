@@ -574,3 +574,102 @@ textarea {
     animation: none;
   }
 }
+
+/* ---------------- 道具屋 / お礼 ---------------- */
+
+.money {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f3c983;
+  white-space: nowrap;
+}
+
+.tool-card {
+  cursor: default;
+  align-items: flex-start;
+}
+
+.tool-card:active {
+  background: linear-gradient(180deg, rgba(255, 228, 186, 0.08), rgba(255, 228, 186, 0.03));
+}
+
+.tool-card .btn {
+  margin-top: 8px;
+}
+
+.tool-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  flex: none;
+  display: block;
+}
+
+.tool-dots {
+  font-size: 11px;
+  color: #f3c983;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.tool-next {
+  color: #f3c983;
+}
+
+.tool-toast {
+  position: sticky;
+  bottom: 8px;
+  margin: 0 auto;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.9);
+  border: 1px solid rgba(233, 169, 75, 0.5);
+  color: #f6ead4;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.tool-toast.is-on {
+  opacity: 1;
+}
+
+.reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 8px;
+}
+
+.reward p {
+  margin: 0;
+}
+
+.reward__gain {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f3c983;
+}
+
+.reward__goal {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+/*
+ * 完了画面: 入りきるときは上下中央、入りきらないときは上から並べてスクロールできるようにする。
+ * （justify-content: center のままだと、はみ出した上側がスクロールでも見えなくなる）
+ */
+.complete-wrap {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.complete-wrap > :first-child {
+  margin-top: auto;
+}
+.complete-wrap > :last-child {
+  margin-bottom: auto;
+}

@@ -8,6 +8,7 @@ import { TRAY_AREA, type StageModule } from '../game/stage';
 import { getStage } from '../game/stages';
 import { openNoteSheet } from './note';
 import { FinalTask, FitTask, PolishTask, RotateTask, ScrubMask, type FitPart } from '../game/tasks';
+import { applyToolEffects, toolEffects } from '../game/tools';
 
 const FINALE_MS = 1700;
 const AUTO_NEXT_MS = 2300;
@@ -59,6 +60,9 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
 
   /* ---------------- 状態 ---------------- */
   const steps = stage.build();
+  // 道具の効果（布の幅・磨きに要る距離・部品が吸い付く範囲）をこのプレイに当てる
+  const fx = toolEffects(app.save.toolLevels);
+  applyToolEffects(steps, fx);
   const session = new RepairSession(steps, performance.now());
   const particles = new Particles();
   let view: ViewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
@@ -254,7 +258,7 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
   }
 
   function brushRadius(): number {
-    return 26;
+    return 26 * fx.brushScale;
   }
 
   /** 最後の工程が終わった瞬間の音と演出（品物ごとに違う） */
@@ -487,9 +491,10 @@ export function mountPlay(app: App, params: ScreenParams): Unmount {
       navigated = true;
       const elapsed = Math.round(session.clearedMs ?? session.elapsedMs(now));
       window.setTimeout(() => {
-        const firstClear = app.save.recordClear(stage.def.id, elapsed, new Date().toISOString());
+        // クリアの記録とお礼はここ1か所だけ（navigated で1回に限る）
+        const { firstClear, reward } = app.save.completeStage(stage.def.id, elapsed, new Date().toISOString());
         app.analytics.track('stage_complete', { stageId: stage.def.id, elapsedMs: elapsed });
-        app.go('complete', { stageId: stage.def.id, clearedMs: elapsed, firstClear });
+        app.go('complete', { stageId: stage.def.id, clearedMs: elapsed, firstClear, reward });
       }, AUTO_NEXT_MS - FINALE_MS);
     }
 
