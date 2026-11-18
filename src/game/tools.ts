@@ -124,3 +124,19 @@ export function nextGoal(money: number, levels: ToolLevels): NextGoal | null {
   }
   return best;
 }
+
+/**
+ * 連打よけ。作った瞬間と、通した直後の ms ミリ秒は false を返す。
+ * 道具屋で「すばやい2回タップで2段階いっぺんに買ってしまう」のを防ぐ
+ * （1回目で画面が描き直され、2回目が新しいボタンに当たるため）。
+ * 開いた直後もふさぐのは、前の画面の「道具屋へ」を2回押した2回目が買うボタンに当たるのを防ぐため。
+ */
+export function tapGate(ms: number, now: () => number = () => performance.now()): () => boolean {
+  let last = now();
+  return () => {
+    const t = now();
+    if (t - last < ms) return false;
+    last = t;
+    return true;
+  };
+}

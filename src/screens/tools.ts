@@ -1,6 +1,6 @@
 import { backButton, el, muteButton, type App, type ScreenParams, type Unmount } from '../app';
 import { sfx } from '../core/audio';
-import { getToolDef, MAX_TOOL_LEVEL, TOOLS, upgradeCost, type ToolId } from '../game/tools';
+import { getToolDef, MAX_TOOL_LEVEL, tapGate, TOOLS, upgradeCost, type ToolId } from '../game/tools';
 
 /**
  * 道具屋。お礼のお金で、布・磨き粉・ピンセットを1段階ずつ良くする。
@@ -27,7 +27,11 @@ export function mountTools(app: App, params: ScreenParams): Unmount {
     toastTimer = window.setTimeout(() => toast.classList.remove('is-on'), 1800);
   }
 
+  // 開いた直後・買った直後のすばやいタップは無視する（2段階いっぺんに買わないように）
+  const canTap = tapGate(400);
+
   function buy(id: ToolId): void {
+    if (!canTap()) return;
     const result = app.save.buyUpgrade(id);
     if (!result.ok) {
       // ボタンは押せない状態にしてあるが、連打などで来たときも何も減らさない
@@ -74,7 +78,7 @@ export function mountTools(app: App, params: ScreenParams): Unmount {
         );
         if (money >= cost) {
           btn = el('button', { class: 'btn btn--sm btn--block', type: 'button' }, [`${cost}円で買う`]) as HTMLButtonElement;
-          btn.addEventListener('click', () => buy(tool.id), { once: true });
+          btn.addEventListener('click', () => buy(tool.id));
         } else {
           btn = el('button', { class: 'btn btn--ghost btn--sm btn--block', type: 'button', disabled: 'true' }, [
             `あと${cost - money}円`,

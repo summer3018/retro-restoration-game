@@ -6,6 +6,7 @@ import {
   rewardFor,
   toolEffects,
   upgradeCost,
+  tapGate,
 } from '../src/game/tools';
 import { FitTask, PolishTask } from '../src/game/tasks';
 
@@ -78,5 +79,22 @@ describe('次の目標', () => {
 
   it('全部最高なら目標なし', () => {
     expect(nextGoal(0, all(3))).toBeNull();
+  });
+});
+
+describe('連打よけ（道具屋の買うボタン）', () => {
+  it('開いた直後と、買った直後のしばらくは押しても通らない', () => {
+    let t = 1000;
+    const gate = tapGate(400, () => t);
+    // 画面を開いた瞬間（別の画面のボタンを2回押した2回目がここに来る）
+    expect(gate()).toBe(false);
+    t += 399;
+    expect(gate()).toBe(false);
+    t += 1; // 開いてから400ms
+    expect(gate()).toBe(true); // 1回目の購入
+    t += 120; // すばやい2回目のタップ
+    expect(gate()).toBe(false);
+    t += 400;
+    expect(gate()).toBe(true); // 間をあけた次の購入は通る
   });
 });
