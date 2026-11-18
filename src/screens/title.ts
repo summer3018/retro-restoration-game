@@ -27,6 +27,7 @@ export function mountTitle(app: App): Unmount {
   const startLabel = cleared === 0 ? 'はじめる' : 'つづきから';
   const startBtn = el('button', { class: 'btn btn--block', type: 'button' }, [startLabel]);
   const collectionBtn = el('button', { class: 'btn btn--ghost btn--block', type: 'button' }, ['図鑑を見る']);
+  const toolsBtn = el('button', { class: 'btn btn--ghost btn--block', type: 'button' }, ['道具屋']);
   const dataBtn = el('button', { class: 'btn btn--ghost btn--block btn--sm', type: 'button' }, [
     'プレイ記録（テスト協力者向け）',
   ]);
@@ -39,6 +40,10 @@ export function mountTitle(app: App): Unmount {
     sfx.ui();
     app.go('collection');
   });
+  toolsBtn.addEventListener('click', () => {
+    sfx.ui();
+    app.go('tools', { back: 'title' });
+  });
   dataBtn.addEventListener('click', () => {
     sfx.ui();
     app.go('data');
@@ -48,9 +53,10 @@ export function mountTitle(app: App): Unmount {
     el('h1', { class: 'title-logo' }, ['レトロ修復工房']),
     el('p', { class: 'title-sub' }, ['ふるいものを、指でよみがえらせる']),
     art,
-    el('div', { class: 'title-actions' }, [startBtn, collectionBtn, dataBtn]),
+    el('div', { class: 'title-actions' }, [startBtn, collectionBtn, toolsBtn, dataBtn]),
     el('p', { class: 'muted' }, [
       cleared === 0 ? '所要時間 1〜3分 / 1品' : `修復ずみ ${cleared} / ${STAGES.length} 品`,
+      app.save.money > 0 ? ` ・ 所持金 ${app.save.money}円` : '',
     ]),
     offlineNote,
   ]);

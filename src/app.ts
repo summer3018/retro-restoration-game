@@ -3,7 +3,7 @@ import { sfx } from './core/audio';
 import { detectStore, SaveStore } from './core/storage';
 import type { StageId } from './game/stage';
 
-export type ScreenName = 'title' | 'select' | 'play' | 'complete' | 'collection' | 'data';
+export type ScreenName = 'title' | 'select' | 'play' | 'complete' | 'collection' | 'data' | 'tools';
 
 export interface ScreenParams {
   stageId?: StageId;
@@ -17,6 +17,8 @@ export interface ScreenParams {
   fromNext?: boolean;
   /** クリアで受け取ったお礼（円） */
   reward?: number;
+  /** 道具屋の「もどる」の行き先 */
+  back?: 'title' | 'select';
 }
 
 export type Unmount = () => void;

@@ -1,6 +1,7 @@
 import { el, formatMs, muteButton, type App, type ScreenParams, type Unmount } from '../app';
 import { sfx } from '../core/audio';
 import { getStage, nextStageId, STAGES } from '../game/stages';
+import { getToolDef, nextGoal } from '../game/tools';
 import { openSurvey } from './survey';
 import { renderThumb } from './thumb';
 
@@ -41,7 +42,7 @@ export function mountComplete(app: App, params: ScreenParams): Unmount {
     const allDone = STAGES.every((s) => app.save.isCleared(s.def.id));
     if (allDone) {
       actions.append(
-        el('p', { class: 'muted' }, ['3つすべての修復がおわりました。ありがとうございました！']),
+        el('p', { class: 'muted' }, [`${STAGES.length}つすべての修復がおわりました。ありがとうございました！`]),
       );
     }
   }
@@ -83,12 +84,36 @@ export function mountComplete(app: App, params: ScreenParams): Unmount {
 
   const timeText = params.clearedMs !== undefined ? `かかった時間 ${formatMs(params.clearedMs)}` : '';
 
+  // お礼と、次に目指す道具（続けて遊ぶ理由）
+  const rewardBox = el('div', { class: 'reward' });
+  if (params.reward !== undefined) {
+    rewardBox.append(
+      el('p', { class: 'reward__gain' }, [`お礼 +${params.reward}円`]),
+      el('p', { class: 'muted' }, [`所持金 ${app.save.money}円`]),
+    );
+  }
+  const goal = nextGoal(app.save.money, app.save.toolLevels);
+  if (goal) {
+    const goalName = getToolDef(goal.toolId).levelNames[goal.nextLevel - 1];
+    if (goal.short === 0) {
+      const shopBtn = el('button', { class: 'btn btn--sm', type: 'button' }, ['道具屋へ']);
+      shopBtn.addEventListener('click', () => {
+        sfx.ui();
+        app.go('tools', { back: 'select' });
+      });
+      rewardBox.append(el('p', { class: 'reward__goal' }, [`${goalName}が買えます！`]), shopBtn);
+    } else {
+      rewardBox.append(el('p', { class: 'reward__goal' }, [`あと${goal.short}円で ${goalName}`]));
+    }
+  }
+
   const wrap = el('div', { class: 'complete-wrap pop' }, [
     el('p', { class: 'title-sub' }, [params.firstClear ? '図鑑に登録しました' : 'もう一度きれいになりました']),
     el('h1', { class: 'complete-title' }, ['修復完了！']),
     el('p', { class: 'card__title' }, [stage.def.title]),
     compare,
     el('p', { class: 'muted' }, [timeText]),
+    rewardBox,
     actions,
   ]);
 
